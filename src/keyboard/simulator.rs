@@ -28,7 +28,7 @@ impl KeyboardSimulator {
 
     fn send_unicode_char(ch: char) {
         unsafe {
-            let mut input = INPUT {
+            let input = INPUT {
                 r#type: INPUT_KEYBOARD,
                 Anonymous: INPUT_0 {
                     ki: KEYBDINPUT {

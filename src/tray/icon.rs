@@ -196,36 +196,40 @@ impl TrayManager {
             let app_name = w!("DictationApp");
 
             let mut key = HKEY::default();
-            RegCreateKeyExW(
-                HKEY_CURRENT_USER,
-                key_path,
-                0,
-                None,
-                REG_OPTION_NON_VOLATILE,
-                KEY_SET_VALUE,
-                None,
-                &mut key,
-                None,
-            )?;
 
             if enable {
-                let exe_path = std::env::current_exe()?;
+                // Open or create the key
+                RegOpenKeyExW(HKEY_CURRENT_USER, key_path, 0, KEY_SET_VALUE, &mut key)
+                    .map_err(|e| format!("Failed to open registry key: {:?}", e))?;
+
+                let exe_path = std::env::current_exe()
+                    .map_err(|e| format!("Failed to get exe path: {}", e))?;
                 let path_str = exe_path.to_string_lossy();
                 let mut wide: Vec<u16> = path_str.encode_utf16().collect();
                 wide.push(0);
+
+                // Convert u16 slice to u8 slice for the registry
+                let byte_slice = std::slice::from_raw_parts(
+                    wide.as_ptr() as *const u8,
+                    wide.len() * 2,
+                );
 
                 RegSetValueExW(
                     key,
                     app_name,
                     0,
                     REG_SZ,
-                    Some(&wide.as_slice()[..wide.len() * 2]),
-                )?;
-            } else {
-                let _ = RegDeleteValueW(key, app_name);
-            }
+                    Some(byte_slice),
+                ).map_err(|e| format!("Failed to set registry value: {:?}", e))?;
 
-            RegCloseKey(key)?;
+                RegCloseKey(key)
+                    .map_err(|e| format!("Failed to close registry key: {:?}", e))?;
+            } else {
+                if RegOpenKeyExW(HKEY_CURRENT_USER, key_path, 0, KEY_SET_VALUE, &mut key).is_ok() {
+                    let _ = RegDeleteValueW(key, app_name);
+                    let _ = RegCloseKey(key);
+                }
+            }
         }
 
         Ok(())

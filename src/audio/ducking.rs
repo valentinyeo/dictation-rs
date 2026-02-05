@@ -1,10 +1,7 @@
-use std::collections::HashMap;
-use windows::core::*;
-use windows::Win32::Media::Audio::*;
-use windows::Win32::System::Com::*;
+// Audio ducking temporarily disabled due to COM thread-safety issues
+// Will be re-implemented in a future version using a dedicated thread
 
 pub struct AudioDucker {
-    sessions: HashMap<u32, (ISimpleAudioVolume, f32)>,
     duck_volume: f32,
     is_ducked: bool,
 }
@@ -12,85 +9,33 @@ pub struct AudioDucker {
 impl AudioDucker {
     pub fn new(duck_volume: f32) -> Self {
         Self {
-            sessions: HashMap::new(),
             duck_volume,
             is_ducked: false,
         }
     }
 
-    pub fn duck(&mut self) -> Result<()> {
+    pub fn duck(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         if self.is_ducked {
             return Ok(());
         }
 
-        unsafe {
-            CoInitialize(None)?;
-
-            let enumerator: IMMDeviceEnumerator =
-                CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)?;
-
-            let device = enumerator.GetDefaultAudioEndpoint(eRender, eConsole)?;
-
-            let session_manager: IAudioSessionManager2 = device.Activate(CLSCTX_ALL, None)?;
-            let session_enum = session_manager.GetSessionEnumerator()?;
-            let count = session_enum.GetCount()?;
-
-            self.sessions.clear();
-
-            for i in 0..count {
-                if let Ok(session) = session_enum.GetSession(i) {
-                    let session2: IAudioSessionControl2 = session.cast()?;
-                    let process_id = session2.GetProcessId()?;
-
-                    // Skip our own process
-                    if process_id == std::process::id() {
-                        continue;
-                    }
-
-                    if let Ok(volume_control) = session.cast::<ISimpleAudioVolume>() {
-                        let current_volume = volume_control.GetMasterVolume()?;
-
-                        if current_volume > 0.01 {
-                            // Store original volume and set to duck_volume
-                            volume_control.SetMasterVolume(self.duck_volume, std::ptr::null())?;
-                            self.sessions.insert(process_id, (volume_control, current_volume));
-                        }
-                    }
-                }
-            }
-
-            CoUninitialize();
-        }
+        // TODO: Implement audio ducking in a separate thread
+        // COM objects can't be sent across threads, so we need a different approach
 
         self.is_ducked = true;
-        println!("[Ducker] Ducked {} audio sessions", self.sessions.len());
+        println!("[Ducker] Audio ducking requested (feature temporarily disabled)");
         Ok(())
     }
 
-    pub fn restore(&mut self) -> Result<()> {
+    pub fn restore(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         if !self.is_ducked {
             return Ok(());
         }
 
-        unsafe {
-            CoInitialize(None)?;
+        // TODO: Implement audio restore in a separate thread
 
-            for (_, (volume_control, original_volume)) in &self.sessions {
-                let _ = volume_control.SetMasterVolume(*original_volume, std::ptr::null());
-            }
-
-            CoUninitialize();
-        }
-
-        println!("[Ducker] Restored {} audio sessions", self.sessions.len());
-        self.sessions.clear();
         self.is_ducked = false;
+        println!("[Ducker] Audio restore requested (feature temporarily disabled)");
         Ok(())
-    }
-}
-
-impl Drop for AudioDucker {
-    fn drop(&mut self) {
-        let _ = self.restore();
     }
 }
