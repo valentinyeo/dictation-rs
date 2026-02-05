@@ -21,7 +21,7 @@ impl TrayManager {
     pub fn new(
         state_manager: Arc<StateManager>,
         config: Arc<tokio::sync::RwLock<Config>>,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    ) -> std::result::Result<Self, Box<dyn std::error::Error>> {
         let menu = Menu::new();
 
         let pause_item = MenuItem::new("Pause", true, None);
@@ -127,7 +127,7 @@ impl TrayManager {
         println!("[Tray] Autostart {}", if new_state { "enabled" } else { "disabled" });
     }
 
-    fn load_icon(color: &str) -> Result<Icon, Box<dyn std::error::Error>> {
+    fn load_icon(color: &str) -> std::result::Result<Icon, Box<dyn std::error::Error>> {
         // For now, use a simple colored icon
         // In production, load from resources/mic-{color}.ico
         let icon_data = Self::generate_icon(color);
@@ -190,7 +190,7 @@ impl TrayManager {
         false
     }
 
-    fn set_autostart(enable: bool) -> Result<(), Box<dyn std::error::Error>> {
+    fn set_autostart(enable: bool) -> std::result::Result<(), Box<dyn std::error::Error>> {
         unsafe {
             let key_path = w!("Software\\Microsoft\\Windows\\CurrentVersion\\Run");
             let app_name = w!("DictationApp");
