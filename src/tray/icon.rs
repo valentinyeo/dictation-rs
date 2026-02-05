@@ -199,11 +199,15 @@ impl TrayManager {
 
             if enable {
                 // Open or create the key
-                RegOpenKeyExW(HKEY_CURRENT_USER, key_path, 0, KEY_SET_VALUE, &mut key)
-                    .map_err(|e| format!("Failed to open registry key: {:?}", e))?;
+                if let Err(e) = RegOpenKeyExW(HKEY_CURRENT_USER, key_path, 0, KEY_SET_VALUE, &mut key) {
+                    return Err(format!("Failed to open registry key: {:?}", e).into());
+                }
 
-                let exe_path = std::env::current_exe()
-                    .map_err(|e| format!("Failed to get exe path: {}", e))?;
+                let exe_path = match std::env::current_exe() {
+                    Ok(path) => path,
+                    Err(e) => return Err(format!("Failed to get exe path: {}", e).into()),
+                };
+
                 let path_str = exe_path.to_string_lossy();
                 let mut wide: Vec<u16> = path_str.encode_utf16().collect();
                 wide.push(0);
@@ -214,16 +218,12 @@ impl TrayManager {
                     wide.len() * 2,
                 );
 
-                RegSetValueExW(
-                    key,
-                    app_name,
-                    0,
-                    REG_SZ,
-                    Some(byte_slice),
-                ).map_err(|e| format!("Failed to set registry value: {:?}", e))?;
+                if let Err(e) = RegSetValueExW(key, app_name, 0, REG_SZ, Some(byte_slice)) {
+                    let _ = RegCloseKey(key);
+                    return Err(format!("Failed to set registry value: {:?}", e).into());
+                }
 
-                RegCloseKey(key)
-                    .map_err(|e| format!("Failed to close registry key: {:?}", e))?;
+                let _ = RegCloseKey(key);
             } else {
                 if RegOpenKeyExW(HKEY_CURRENT_USER, key_path, 0, KEY_SET_VALUE, &mut key).is_ok() {
                     let _ = RegDeleteValueW(key, app_name);
