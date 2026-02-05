@@ -41,7 +41,6 @@ impl AudioCapture {
     ) -> Result<Stream, Box<dyn std::error::Error>>
     where
         T: Sample + cpal::SizedSample,
-        i16: From<T>,
     {
         let channels = config.channels as usize;
         let tx = Arc::new(tx);
@@ -54,7 +53,7 @@ impl AudioCapture {
                     .chunks(channels)
                     .map(|frame| {
                         // Average channels to mono
-                        let sum: i32 = frame.iter().map(|&s| i16::from(s) as i32).sum();
+                        let sum: i32 = frame.iter().map(|&s| Self::to_i16(s) as i32).sum();
                         (sum / channels as i32) as i16
                     })
                     .collect();
@@ -71,5 +70,9 @@ impl AudioCapture {
         )?;
 
         Ok(stream)
+    }
+
+    fn to_i16<T: Sample>(sample: T) -> i16 {
+        sample.to_i16()
     }
 }
