@@ -1,0 +1,17 @@
+# Dictation App Configuration
+# Copy this file to: %APPDATA%\dictation\config.toml
+# Or use the tray icon: Right-click → Settings
+
+[deepgram]
+api_key = "e2406a887911086cca154ab1109fa13e85055ab5"
+language = "en"  # "en" or "de" (English or German)
+model = "nova-2"  # "nova-2" or "nova-3"
+
+[audio]
+silence_threshold_ms = 3000  # Auto-pause after this many milliseconds of silence
+duck_volume = 0.2  # Volume level (0.0-1.0) for other apps during dictation
+
+[vad]
+energy_threshold = 0.02  # RMS threshold for speech detection (0.0-1.0)
+# Lower = more sensitive (picks up quieter speech)
+# Higher = less sensitive (only loud speech)

@@ -1,0 +1,84 @@
+name: Build Dictation App
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache cargo index
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache target directory
+      uses: actions/cache@v3
+      with:
+        path: target
+        key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Build release
+      run: cargo build --release --verbose
+
+    - name: Strip binary
+      run: strip target/release/dictation-rs.exe
+      continue-on-error: true
+
+    - name: Create artifact directory
+      run: mkdir artifact
+
+    - name: Copy executable
+      run: copy target/release/dictation-rs.exe artifact/dictation-rs.exe
+
+    - name: Copy README
+      run: copy README.md artifact/README.md
+
+    - name: Copy QUICKSTART
+      run: copy QUICKSTART.md artifact/QUICKSTART.md
+
+    - name: Copy sample config
+      run: copy config.sample.toml artifact/config.sample.toml
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: dictation-rs-windows
+        path: artifact/
+
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          artifact/dictation-rs.exe
+          artifact/README.md
+          artifact/QUICKSTART.md
+          artifact/config.sample.toml
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
